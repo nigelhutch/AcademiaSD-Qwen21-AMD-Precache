@@ -1,0 +1,206 @@
+{
+  "scope": "Real CPU PyTorch serialization using source-extracted encoding functions and synthetic model outputs; not actual Qwen model or application end-to-end",
+  "torch": "2.9.1+rocm7.2.1",
+  "hip": "7.2.53211-158bd99533",
+  "candidate_sha256": "2523513febcbe2cb4bd7f58876c29f40f223e97afabd3e780e12f25f3c6cf18d",
+  "results": [
+    {
+      "name": "baseline _neg token count",
+      "pass": true
+    },
+    {
+      "name": "baseline normal token count",
+      "pass": true
+    },
+    {
+      "name": "baseline edit token count",
+      "pass": true
+    },
+    {
+      "name": "baseline _custom token count",
+      "pass": true
+    },
+    {
+      "name": "baseline _custom2 token count",
+      "pass": true
+    },
+    {
+      "name": "baseline no leftover temporary files",
+      "pass": true
+    },
+    {
+      "name": "candidate _neg token count",
+      "pass": true
+    },
+    {
+      "name": "candidate normal token count",
+      "pass": true
+    },
+    {
+      "name": "candidate edit token count",
+      "pass": true
+    },
+    {
+      "name": "candidate _custom token count",
+      "pass": true
+    },
+    {
+      "name": "candidate _custom2 token count",
+      "pass": true
+    },
+    {
+      "name": "candidate no leftover temporary files",
+      "pass": true
+    },
+    {
+      "name": "normal/edit/preview complete exact expected filenames",
+      "pass": true
+    },
+    {
+      "name": "_custom2_embed.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_custom2_embed.pt BF16 embedding shape",
+      "pass": true
+    },
+    {
+      "name": "_custom2_mask.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_custom2_mask.pt bool mask shape",
+      "pass": true
+    },
+    {
+      "name": "_custom_ctrl.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_custom_ctrl.pt BF16 latent shape",
+      "pass": true
+    },
+    {
+      "name": "_custom_embed.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_custom_embed.pt BF16 embedding shape",
+      "pass": true
+    },
+    {
+      "name": "_custom_imgmask.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_custom_imgmask.pt bool mask shape",
+      "pass": true
+    },
+    {
+      "name": "_custom_mask.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_custom_mask.pt bool mask shape",
+      "pass": true
+    },
+    {
+      "name": "_neg_embed.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_neg_embed.pt BF16 embedding shape",
+      "pass": true
+    },
+    {
+      "name": "_neg_mask.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "_neg_mask.pt bool mask shape",
+      "pass": true
+    },
+    {
+      "name": "edit_ctrl.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "edit_ctrl.pt BF16 latent shape",
+      "pass": true
+    },
+    {
+      "name": "edit_embed.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "edit_embed.pt BF16 embedding shape",
+      "pass": true
+    },
+    {
+      "name": "edit_imgmask.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "edit_imgmask.pt bool mask shape",
+      "pass": true
+    },
+    {
+      "name": "edit_latent.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "edit_latent.pt BF16 latent shape",
+      "pass": true
+    },
+    {
+      "name": "edit_mask.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "edit_mask.pt bool mask shape",
+      "pass": true
+    },
+    {
+      "name": "normal_embed.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "normal_embed.pt BF16 embedding shape",
+      "pass": true
+    },
+    {
+      "name": "normal_latent.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "normal_latent.pt BF16 latent shape",
+      "pass": true
+    },
+    {
+      "name": "normal_mask.pt exact tensor equality",
+      "pass": true
+    },
+    {
+      "name": "normal_mask.pt bool mask shape",
+      "pass": true
+    },
+    {
+      "name": "fresh normal and edit latents reused, preview always regenerated",
+      "pass": true
+    },
+    {
+      "name": "stale preview reference removed",
+      "pass": true
+    },
+    {
+      "name": "incorrect latent shape scheduled for regeneration",
+      "pass": true
+    },
+    {
+      "name": "older cache scheduled for regeneration",
+      "pass": true
+    }
+  ],
+  "passed": 49,
+  "failed": 0
+}

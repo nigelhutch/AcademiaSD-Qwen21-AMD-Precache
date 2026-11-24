@@ -1,0 +1,80 @@
+{
+  "scope": "AST equivalence, synthetic subprocess orchestration, Windows Job cancellation; no actual model/cache generation",
+  "results": [
+    {
+      "name": "encode_and_save unchanged",
+      "pass": true
+    },
+    {
+      "name": "encode_latents unchanged",
+      "pass": true
+    },
+    {
+      "name": "encode_preview_prompts unchanged",
+      "pass": true
+    },
+    {
+      "name": "load_text_encoder unchanged",
+      "pass": true
+    },
+    {
+      "name": "bucket_size unchanged",
+      "pass": true
+    },
+    {
+      "name": "find_samples unchanged",
+      "pass": true
+    },
+    {
+      "name": "remove_stale_custom_ctrls unchanged",
+      "pass": true
+    },
+    {
+      "name": "text and job planning unchanged",
+      "pass": true
+    },
+    {
+      "name": "VAE operations unchanged",
+      "pass": true
+    },
+    {
+      "name": "ok status and phase count",
+      "pass": true
+    },
+    {
+      "name": "ok independent worker PIDs",
+      "pass": true
+    },
+    {
+      "name": "textfail status and phase count",
+      "pass": true
+    },
+    {
+      "name": "missing status and phase count",
+      "pass": true
+    },
+    {
+      "name": "vaefail status and phase count",
+      "pass": true
+    },
+    {
+      "name": "vaefail independent worker PIDs",
+      "pass": true
+    },
+    {
+      "name": "configchange status and phase count",
+      "pass": true
+    },
+    {
+      "name": "worker alive before cancellation",
+      "pass": true
+    },
+    {
+      "name": "direct GUI-style supervisor termination kills worker",
+      "pass": true
+    }
+  ],
+  "passed": 18,
+  "failed": 0,
+  "candidate_sha256": "2523513febcbe2cb4bd7f58876c29f40f223e97afabd3e780e12f25f3c6cf18d"
+}

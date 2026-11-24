@@ -1,0 +1,164 @@
+--- a/scripts/1_pre_cache_qwen_image21.py
++++ b/scripts/1_pre_cache_qwen_image21.py
+@@ -7,6 +7,97 @@
+ Reads configuration from pre_cache_settings_qwenimage21.json if present.
+ """
+ import os
++import sys
++import subprocess
++import tempfile
++
++def contain_windows_workers():
++    # The GUI terminates the supervisor directly. A non-inheritable Job handle
++    # closes when the supervisor dies, killing all descendants in the Job.
++    if os.name != "nt":
++        raise RuntimeError("Isolated pre-cache is currently Windows-only")
++    import ctypes as C
++    from ctypes import wintypes as W
++    class Basic(C.Structure):
++        _fields_ = [("PerProcessUserTimeLimit", C.c_int64),
++                    ("PerJobUserTimeLimit", C.c_int64), ("LimitFlags", W.DWORD),
++                    ("MinimumWorkingSetSize", C.c_size_t), ("MaximumWorkingSetSize", C.c_size_t),
++                    ("ActiveProcessLimit", W.DWORD), ("Affinity", C.c_size_t),
++                    ("PriorityClass", W.DWORD), ("SchedulingClass", W.DWORD)]
++    class IO(C.Structure):
++        _fields_ = [(name, C.c_uint64) for name in ("ReadOperationCount", "WriteOperationCount",
++                    "OtherOperationCount", "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
++    class Extended(C.Structure):
++        _fields_ = [("BasicLimitInformation", Basic), ("IoInfo", IO),
++                    ("ProcessMemoryLimit", C.c_size_t), ("JobMemoryLimit", C.c_size_t),
++                    ("PeakProcessMemoryUsed", C.c_size_t), ("PeakJobMemoryUsed", C.c_size_t)]
++    k = C.WinDLL("kernel32", use_last_error=True)
++    k.CreateJobObjectW.argtypes = [C.c_void_p, W.LPCWSTR]
++    k.CreateJobObjectW.restype = W.HANDLE
++    k.SetInformationJobObject.argtypes = [W.HANDLE, C.c_int, C.c_void_p, W.DWORD]
++    k.SetInformationJobObject.restype = W.BOOL
++    k.GetCurrentProcess.restype = W.HANDLE
++    k.AssignProcessToJobObject.argtypes = [W.HANDLE, W.HANDLE]
++    k.AssignProcessToJobObject.restype = W.BOOL
++    k.CloseHandle.argtypes = [W.HANDLE]
++    k.CloseHandle.restype = W.BOOL
++    h = k.CreateJobObjectW(None, None)
++    if not h:
++        raise C.WinError(C.get_last_error())
++    limits = Extended()
++    limits.BasicLimitInformation.LimitFlags = 0x2000  # KILL_ON_JOB_CLOSE
++    if not k.SetInformationJobObject(h, 9, C.byref(limits), C.sizeof(limits)):
++        error = C.get_last_error()
++        k.CloseHandle(h)
++        raise C.WinError(error)
++    if not k.AssignProcessToJobObject(h, k.GetCurrentProcess()):
++        error = C.get_last_error()
++        k.CloseHandle(h)
++        raise C.WinError(error)
++    # Deliberately keep this raw handle open until OS process teardown.
++    return h
++
++
++def precache_config_identity():
++    import hashlib
++    path = os.path.abspath(os.environ.get("LORALAB_PRECACHE_CONFIG") or
++                           "settings/pre_cache_settings_qwenimage21.json")
++    try:
++        with open(path, "rb") as f:
++            digest = hashlib.sha256(f.read()).hexdigest()
++    except FileNotFoundError:
++        digest = None
++    return [path, digest]
++
++
++def run_isolated_precache():
++    job_handle = contain_windows_workers()
++    config_identity = precache_config_identity()
++    with tempfile.TemporaryDirectory(prefix="loralab-precache-") as directory:
++        manifest = os.path.join(directory, "jobs.json")
++        for phase in ("text", "vae"):
++            if precache_config_identity() != config_identity:
++                print("[!] Pre-cache settings changed; restart pre-cache", flush=True)
++                return 1
++            command = [sys.executable, "-u", os.path.abspath(__file__),
++                       "--internal-precache-" + phase, manifest]
++            result = subprocess.run(command, check=False)
++            if result.returncode:
++                print(f"[!] {phase} process failed: {result.returncode}", flush=True)
++                return 1
++            if phase == "text" and not os.path.isfile(manifest):
++                print("[!] Text process did not produce a job manifest", flush=True)
++                return 1
++    return 0
++
++if __name__ == "__main__" and sys.argv[1:] == ["--isolate-precache"]:
++    sys.exit(run_isolated_precache())
++
++# Opt-in for the application's existing no-argument launcher.
++if (__name__ == "__main__" and len(sys.argv) == 1
++        and os.environ.get("LORALAB_ISOLATE_PRECACHE") == "1"):
++    sys.exit(run_isolated_precache())
++
+ import gc
+ import math
+ import json
+@@ -89,6 +180,7 @@
+ # ── CARGAR CONFIGURACIÓN / LOAD CONFIG ──────────────────────────────────────
+ CONFIG_PATH = os.environ.get("LORALAB_PRECACHE_CONFIG") or "settings/pre_cache_settings_qwenimage21.json"
+ 
++PRECACHE_CONFIG_IDENTITY = precache_config_identity()
+ if os.path.exists(CONFIG_PATH):
+     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+         cfg = json.load(f)
+@@ -366,7 +458,7 @@
+             print(f"[{idx}/{len(jobs)}] {t('Image')}: {os.path.basename(src)} -> {out} | {bw}x{bh}", flush=True)
+ 
+ 
+-def preprocess_qwen_image21():
++def preprocess_qwen_image21(manifest_path=None):
+     if not os.path.exists(DATASET_PATH):
+         print("[!] " + t("Dataset folder does not exist: {path}", path=DATASET_PATH))
+         sys.exit(1)
+@@ -478,15 +570,22 @@
+     del pipe
+     free_vram()
+ 
+-    # ── FASE 2: VAE (Qwen-Image 2.1, 64 canales, RGBA) ──────────────────────
+-    # Un latente ya cacheado con el tamaño de bucket actual y más nuevo que su imagen no se
+-    # vuelve a codificar: relanzar el pre-caché para cambiar el prompt manual o los captions
+-    # solo cuesta la fase de texto. En edición, el antes se guarda como <nombre>_ctrl.pt.
+-    # Las imágenes de referencia de la preview de edición se codifican siempre: pueden ser otros ficheros más antiguos.
+     jobs = [(target, f"{name}_latent.pt", buckets[name]) for name, target, _ in samples]
+     jobs += [(control, f"{name}_ctrl.pt", buckets[name]) for name, _, control in samples if control]
+     jobs += [(src, ctrl, bucket) for ctrl, (src, bucket) in plan_buckets.items()]
+ 
++    if manifest_path is not None:
++        if precache_config_identity() != PRECACHE_CONFIG_IDENTITY:
++            raise RuntimeError("Pre-cache configuration changed during text encoding")
++        with open(manifest_path, "x", encoding="utf-8") as f:
++            json.dump({"model": MODEL_ID, "cache": CACHE_DIR, "jobs": jobs,
++                       "expected_custom_ctrls": sorted(expected_custom_ctrls),
++                       "config_identity": PRECACHE_CONFIG_IDENTITY}, f)
++        return
++    run_vae_phase(jobs, expected_custom_ctrls)
++
++
++def run_vae_phase(jobs, expected_custom_ctrls):
+     pending = []
+     for src, out, (bw, bh) in jobs:
+         lat_path = os.path.join(CACHE_DIR, out)
+@@ -608,6 +707,18 @@
+ 
+ 
+ if __name__ == "__main__":
++    if len(sys.argv) == 3 and sys.argv[1] == "--internal-precache-text":
++        preprocess_qwen_image21(manifest_path=sys.argv[2])
++        sys.exit(0)
++    if len(sys.argv) == 3 and sys.argv[1] == "--internal-precache-vae":
++        with open(sys.argv[2], encoding="utf-8") as f:
++            manifest = json.load(f)
++        if (manifest["model"] != MODEL_ID or manifest["cache"] != CACHE_DIR
++                or manifest["config_identity"] != PRECACHE_CONFIG_IDENTITY
++                or precache_config_identity() != PRECACHE_CONFIG_IDENTITY):
++            raise RuntimeError("Pre-cache configuration changed between phases")
++        run_vae_phase(manifest["jobs"], set(manifest["expected_custom_ctrls"]))
++        sys.exit(0)
+     prompts_only = preview_prompts.parse_prompts_only(sys.argv)
+     if prompts_only:
+         # --prompts-only <carpeta de caché> <cuda|cpu> <json [[slot, prompt con el trigger ya puesto], ...]> [<json rutas>]
